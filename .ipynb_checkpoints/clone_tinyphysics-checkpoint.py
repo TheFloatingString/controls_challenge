@@ -321,41 +321,57 @@ def download_dataset():
                         dest.write(src.read())
 
 
-if __name__ == "__main__":
+def run(args_controller="test1"):
     available_controllers = get_available_controllers()
+    """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path", type=str, required=True)
-    parser.add_argument("--data_path", type=str, required=True)
+    parser.add_argument("--model_path", type=str, required=True, default="./models/tinyphysics.onnx")
+    parser.add_argument("--data_path", type=str, required=True, default="./data/00000.csv")
     parser.add_argument("--num_segs", type=int, default=100)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--controller", default="pid", choices=available_controllers)
     args = parser.parse_args()
+    """
+
+    args_data_path="data/00000.csv"
+    args_num_segs=100
+    args_model_path = "models/tinyphysics.onnx"
+    args_controller = args_controller
+    args_debug=False
 
     if not DATASET_PATH.exists():
         download_dataset()
 
-    data_path = Path(args.data_path)
-    if data_path.is_file():
+    data_path = Path(args_data_path)
+    print("hi!")
+    # if data_path.is_file():
+    if True:
+        print(args_model_path)
+        print("over here")
         cost, _, _ = run_rollout(
-            data_path, args.controller, args.model_path, debug=args.debug
+            data_path, args_controller, args_model_path, debug=args_debug
         )
+        print("v1")
         print(
             f"\nAverage lataccel_cost: {cost['lataccel_cost']:>6.4}, average jerk_cost: {cost['jerk_cost']:>6.4}, average total_cost: {cost['total_cost']:>6.4}"
         )
+        return cost
     elif data_path.is_dir():
         run_rollout_partial = partial(
             run_rollout,
-            controller_type=args.controller,
-            model_path=args.model_path,
+            controller_type=args_controller,
+            model_path=args_model_path,
             debug=False,
         )
-        files = sorted(data_path.iterdir())[: args.num_segs]
+        print("v2")
+        files = sorted(data_path.iterdir())[: args_num_segs]
         results = process_map(run_rollout_partial, files, max_workers=16, chunksize=10)
         costs = [result[0] for result in results]
         costs_df = pd.DataFrame(costs)
         print(
             f"\nAverage lataccel_cost: {np.mean(costs_df['lataccel_cost']):>6.4}, average jerk_cost: {np.mean(costs_df['jerk_cost']):>6.4}, average total_cost: {np.mean(costs_df['total_cost']):>6.4}"
         )
+        """
         for cost in costs_df.columns:
             plt.hist(costs_df[cost], bins=np.arange(0, 1000, 10), label=cost, alpha=0.5)
         plt.xlabel("costs")
@@ -363,3 +379,7 @@ if __name__ == "__main__":
         plt.title("costs Distribution")
         plt.legend()
         plt.show()
+        """
+        return np.mean(costs_df["total_cost"])
+    else:
+        print("something went wrong")
